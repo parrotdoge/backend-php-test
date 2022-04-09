@@ -148,3 +148,19 @@ $app->post('/todo/delete/{id}', function ($id) use ($app) {
 
     return $app->redirect('/todo');
 });
+
+
+$app->post('/todo/togglestatus/{id}', function ($id) use ($app) {
+    if (null === $user = $app['session']->get('user')) {
+        return $app->redirect('/login');
+    }
+
+    $app['db']->prepare("
+        UPDATE `todos`
+        SET `completed` = 1 - `completed`
+        WHERE `id` = ?
+        AND `user_id` = ?
+    ")->execute([$id, $user['id']]);
+
+    return $app->redirect('/todo');
+});
