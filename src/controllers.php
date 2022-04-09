@@ -135,12 +135,16 @@ $app->post('/todo/add', function (Request $request) use ($app) {
 });
 
 
-$app->match('/todo/delete/{id}', function ($id) use ($app) {
+$app->post('/todo/delete/{id}', function ($id) use ($app) {
+    if (null === $user = $app['session']->get('user')) {
+        return $app->redirect('/login');
+    }
 
     $app['db']->prepare("
         DELETE FROM `todos`
         WHERE `id` = ?
-    ")->execute([$id]);
+        AND `user_id` = ?
+    ")->execute([$id, $user['id']]);
 
     return $app->redirect('/todo');
 });
