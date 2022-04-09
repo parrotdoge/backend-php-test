@@ -22,10 +22,16 @@ $app->match('/login', function (Request $request) use ($app) {
     $password = $request->get('password');
 
     if ($username) {
-        $sql = "SELECT * FROM users WHERE username = '$username' and password = '$password'";
-        $user = $app['db']->fetchAssoc($sql);
+        $stmt = $app['db']->prepare("
+            SELECT *
+            FROM `users`
+            WHERE `username` = ?
+            AND `password` = ?
+        ");
+        $stmt->execute([$username, $password]);
+        $user = $stmt->fetchAssociative();
 
-        if ($user){
+        if ($user) {
             $app['session']->set('user', $user);
             return $app->redirect('/todo');
         }
@@ -46,16 +52,26 @@ $app->get('/todo/{id}', function ($id) use ($app) {
         return $app->redirect('/login');
     }
 
-    if ($id){
-        $sql = "SELECT * FROM todos WHERE id = '$id'";
-        $todo = $app['db']->fetchAssoc($sql);
+    if ($id) {
+        $stmt = $app['db']->prepare("
+            SELECT *
+            FROM `todos`
+            WHERE `id` = ?
+        ");
+        $stmt->execute([$id]);
+        $todo = $stmt->fetchAssociative();
 
         return $app['twig']->render('todo.html', [
             'todo' => $todo,
         ]);
     } else {
-        $sql = "SELECT * FROM todos WHERE user_id = '${user['id']}'";
-        $todos = $app['db']->fetchAll($sql);
+        $stmt = $app['db']->prepare("
+            SELECT *
+            FROM `todos`
+            WHERE `user_id` = ?
+        ");
+        $stmt->execute([$user['id']]);
+        $todos = $stmt->fetchAll();
 
         return $app['twig']->render('todos.html', [
             'todos' => $todos,
@@ -79,8 +95,11 @@ $app->post('/todo/add', function (Request $request) use ($app) {
         return $app->redirect('/todo');
     }
 
-    $sql = "INSERT INTO todos (user_id, description) VALUES ('$user_id', '$description')";
-    $app['db']->executeUpdate($sql);
+    // Security issue: Use a prepared statement to prevent any SQL injection
+    $app['db']->prepare("
+        INSERT INTO `todos` (`user_id`, `description`)
+        VALUES (?, ?)
+    ")->execute([$user_id, $description]);
 
     return $app->redirect('/todo');
 });
@@ -88,8 +107,10 @@ $app->post('/todo/add', function (Request $request) use ($app) {
 
 $app->match('/todo/delete/{id}', function ($id) use ($app) {
 
-    $sql = "DELETE FROM todos WHERE id = '$id'";
-    $app['db']->executeUpdate($sql);
+    $app['db']->prepare("
+        DELETE FROM `todos`
+        WHERE `id` = ?
+    ")->execute([$id]);
 
     return $app->redirect('/todo');
 });
