@@ -116,6 +116,29 @@ $app->get('/todo/{id}', function ($id) use ($app) {
 ->value('id', null);
 
 
+$app->get('/todo/{id}/json', function ($id) use ($app) {
+    if (null === $user = $app['session']->get('user')) {
+        return $app->redirect('/login');
+    }
+
+    $stmt = $app['db']->prepare("
+        SELECT *
+        FROM `todos`
+        WHERE `id` = ?
+        AND `user_id` = ?
+    ");
+    $stmt->execute([$id, $user['id']]);
+    $todo = $stmt->fetchAssociative();
+
+    if (empty($todo)) {
+        $todo = [];
+    }
+
+    return $app->json($todo);
+})
+->value('id', null);
+
+
 $app->post('/todo/add', function (Request $request) use ($app) {
     if (null === $user = $app['session']->get('user')) {
         return $app->redirect('/login');
