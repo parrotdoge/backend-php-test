@@ -25,6 +25,16 @@
             <form method="post" action="{{ app.request.baseurl }}/todo/add">
                 <td colspan="3">
                     <input type="textbox" name="description" class="small-6 small-center" placeholder="Description...">
+
+                    {% if app.session.flashbag.has('formErrors') %}
+                        <div class="errors-container">
+                            {% for error in app.session.flashbag.get('formErrors') %}
+                                <div class="alert alert-danger" role="alert">
+                                    {{ error }}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 </td>
                 <td>
                     <button type="submit" class="btn btn-sm btn-primary">Add</button>
