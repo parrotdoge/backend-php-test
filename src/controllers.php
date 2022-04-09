@@ -87,9 +87,14 @@ $app->get('/todo/{id}', function ($id) use ($app) {
             SELECT *
             FROM `todos`
             WHERE `id` = ?
+            AND `user_id` = ?
         ");
-        $stmt->execute([$id]);
+        $stmt->execute([$id, $user['id']]);
         $todo = $stmt->fetchAssociative();
+
+        if (empty($todo)) {
+            return $app->redirect('/todo');
+        }
 
         return $app['twig']->render('todo.html', [
             'todo' => $todo,
