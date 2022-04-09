@@ -13,6 +13,17 @@
                 <span class="input-group-addon"><i class="glyphicon glyphicon-lock"></i></span>
                 <input type="password" class="form-control" name="password" placeholder="Password">
             </div>
+
+            {% if app.session.flashbag.has('loginErrors') %}
+                <div class="errors-container">
+                    {% for error in app.session.flashbag.get('loginErrors') %}
+                        <div class="alert alert-danger" role="alert">
+                            {{ error }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
             <div class="form-group">
                 <div class="col-sm-12 controls">
                     <button type="submit" class="btn btn-primary pull-right"><i class="glyphicon glyphicon-log-in"></i> login</button>

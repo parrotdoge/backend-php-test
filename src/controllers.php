@@ -17,27 +17,57 @@ $app->get('/', function () use ($app) {
 });
 
 
-$app->match('/login', function (Request $request) use ($app) {
+$app->get('/login', function () use ($app) {
+    return $app['twig']->render('login.html', array());
+});
+
+
+$app->post('/login', function (Request $request) use ($app) {
+
     $username = $request->get('username');
     $password = $request->get('password');
 
-    if ($username) {
-        $stmt = $app['db']->prepare("
-            SELECT *
-            FROM `users`
-            WHERE `username` = ?
-            AND `password` = ?
-        ");
-        $stmt->execute([$username, $password]);
-        $user = $stmt->fetchAssociative();
+    // Do some validation
+    $hasErrors = false;
 
-        if ($user) {
-            $app['session']->set('user', $user);
-            return $app->redirect('/todo');
-        }
+    if (empty($username)) {
+        $app['session']->getFlashBag()->add('loginErrors', 'Please enter a username.');
+        $hasErrors = true;
     }
 
-    return $app['twig']->render('login.html', array());
+    if (empty($password)) {
+        $app['session']->getFlashBag()->add('loginErrors', 'Please enter a password.');
+        $hasErrors = true;
+    }
+
+    if ($hasErrors) {
+        return $app->redirect('/login');
+    }
+
+    // Fetch the user by username
+    $stmt = $app['db']->prepare("
+        SELECT *
+        FROM `users`
+        WHERE `username` = ?
+    ");
+    $stmt->execute([$username]);
+    $user = $stmt->fetchAssociative();
+
+    if (empty($user)) {
+        $app['session']->getFlashBag()->add('loginErrors', 'Invalid username or password');
+        return $app->redirect('/todo');
+    }
+
+    // Verify the password matches the hash
+    if (password_verify($password, $user['password'])) {
+        $app['session']->set('user', $user);
+        return $app->redirect('/todo');
+    } else {
+        $app['session']->getFlashBag()->add('loginErrors', 'Invalid username or password');
+        return $app->redirect('/todo');
+    }
+
+    return $app->redirect('/login');
 });
 
 
