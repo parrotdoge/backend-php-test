@@ -5,6 +5,14 @@
     <h1>Todo List:</h1>
     <table class="table table-striped">
 
+        {% if app.session.flashbag.has('confirmationMessages') %}
+            {% for message in app.session.flashbag.get('confirmationMessages') %}
+                <div class="alert alert-success" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
         {% for todo in todos %}
             <tr>
                 <td>

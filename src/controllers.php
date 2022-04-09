@@ -154,10 +154,15 @@ $app->post('/todo/add', function (Request $request) use ($app) {
     }
 
     // Security issue: Use a prepared statement to prevent any SQL injection
-    $app['db']->prepare("
+    $stmt = $app['db']->prepare("
         INSERT INTO `todos` (`user_id`, `description`)
         VALUES (?, ?)
-    ")->execute([$user_id, $description]);
+    ");
+    $stmt->execute([$user_id, $description]);
+
+    if ($stmt->rowCount() > 0) {
+        $app['session']->getFlashBag()->add('confirmationMessages', 'Todo added');
+    }
 
     return $app->redirect('/todo');
 });
@@ -168,11 +173,17 @@ $app->post('/todo/delete/{id}', function ($id) use ($app) {
         return $app->redirect('/login');
     }
 
-    $app['db']->prepare("
+    $stmt = $app['db']->prepare("
         DELETE FROM `todos`
         WHERE `id` = ?
         AND `user_id` = ?
-    ")->execute([$id, $user['id']]);
+    ");
+
+    $stmt->execute([$id, $user['id']]);
+
+    if ($stmt->rowCount() > 0) {
+        $app['session']->getFlashBag()->add('confirmationMessages', 'Todo deleted');
+    }
 
     return $app->redirect('/todo');
 });
