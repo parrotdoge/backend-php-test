@@ -3,6 +3,8 @@
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+const PAGE_SIZE = 5;
+
 $app['twig'] = $app->share($app->extend('twig', function($twig, $app) {
     $twig->addGlobal('user', $app['session']->get('user'));
 
@@ -77,7 +79,7 @@ $app->get('/logout', function () use ($app) {
 });
 
 
-$app->get('/todo/{id}', function ($id) use ($app) {
+$app->get('/todo/{id}', function (Request $request, $id) use ($app) {
     if (null === $user = $app['session']->get('user')) {
         return $app->redirect('/login');
     }
@@ -100,16 +102,51 @@ $app->get('/todo/{id}', function ($id) use ($app) {
             'todo' => $todo,
         ]);
     } else {
+
+        // Get all the Todo ids to paginate
+        $stmt = $app['db']->prepare("
+            SELECT `id`
+            FROM `todos`
+            WHERE `user_id` = ?
+            ORDER BY `id`
+        ");
+        $stmt->execute([$user['id']]);
+        $todoIds = $stmt->fetchAll();
+        $todoIds = array_column($todoIds, 'id');
+
+        // Calculate the items and number of pages
+        $totalItems = count($todoIds);
+        $totalPages = ceil($totalItems / PAGE_SIZE);
+        $totalPages = empty($totalPages) ? 1 : $totalPages;
+
+        // Check if we have a specific page requested
+        $page = $request->get('p');
+        $page = empty($page) ? 1 : $page;
+        $page = ($page > $totalPages) ? $totalPages : $page;
+
+        // Work out the offset id
+        $offsetId = $todoIds[($page - 1) * PAGE_SIZE];
+
+        // Fetch the paged todos
         $stmt = $app['db']->prepare("
             SELECT *
             FROM `todos`
             WHERE `user_id` = ?
+            AND `id` >= ?
+            ORDER BY `id`
+            LIMIT " . PAGE_SIZE . "
         ");
-        $stmt->execute([$user['id']]);
+        $stmt->execute([$user['id'], $offsetId]);
         $todos = $stmt->fetchAll();
+
+        // Pass the page data to the template
+        $pageData = new stdClass;
+        $pageData->total = $totalPages;
+        $pageData->page = $page;
 
         return $app['twig']->render('todos.html', [
             'todos' => $todos,
+            'pageData' => $pageData
         ]);
     }
 })

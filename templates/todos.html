@@ -58,6 +58,52 @@
                 </td>
             </form>
         </tr>
+        <tr>
+            <td colspan="3">
+                <div class="text-center">
+                    <nav aria-label="Page Navigation">
+                        <ul class="pagination">
+
+                            {% if (pageData.page > 1) %}
+                                <li><a class="page-link" href="?p={{ pageData.page - 1 }}">Prev</a></li>
+                            {% endif %}
+
+                            {% if (pageData.page > 4) %}
+                                <li><a class="page-link" href="?p=1">1</a></li>
+                                <li class="disabled"><a class="page-link">...</a></li>
+                            {% endif %}
+
+                            {% set continue = false %}
+                            {% for i in (pageData.page - 3)..(pageData.page + 3) %}
+
+                                {% if i <= 0 or i > pageData.total %}
+                                    {% set continue = true %}
+                                {% endif %}
+
+                                {% if not continue %}
+                                    <li class="{{ i == pageData.page ? 'active' : '' }}"><a class="page-link" href="?p={{ i }}">{{ i }}</a></li>
+                                {% endif %}
+
+                                {% if continue %}
+                                    {% set continue = false %}
+                                {% endif %}
+
+                            {% endfor %}
+
+                            {% if (pageData.page < (pageData.total - 3)) %}
+                                <li class="disabled"><a class="page-link">...</a></li>
+                                <li><a class="page-link" href="?p={{ pageData.total }}">{{ pageData.total }}</a></li>
+                            {% endif %}
+
+                            {% if (pageData.page < pageData.total) %}
+                                <li><a class="page-link" href="?p={{ pageData.page + 1 }}">Next</a></li>
+                            {% endif %}
+
+                        </ul>
+                    </nav>
+                </div>
+            </td>
+        </tr>
     </table>
 </div>
 {% endblock %}
