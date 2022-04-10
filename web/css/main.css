@@ -6,6 +6,24 @@ body {
   margin-top: 10px;
 }
 
-.errors-container {
+.messages-container {
   margin-top: 10px;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity .5s;
+}
+.fade-enter, .fade-leave-to {
+  opacity: 0;
+}
+
+.slide-leave-active,
+.slide-enter-active {
+  transition: 0.75s;
+}
+.slide-enter {
+  transform: translate(-100%, 0);
+}
+.slide-leave-to {
+  transform: translate(100%, 0);
 }

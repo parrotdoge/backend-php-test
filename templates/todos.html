@@ -1,107 +1,53 @@
 {% extends "layout.html" %}
 
+{% block title %} Todo List {% endblock %}
+
 {% block content %}
-<div class="col-md-4 col-md-offset-4">
+<div id="app" class="col-md-4 col-md-offset-4">
     <h1>Todo List:</h1>
     <table class="table table-striped">
 
-        {% if app.session.flashbag.has('confirmationMessages') %}
-            {% for message in app.session.flashbag.get('confirmationMessages') %}
-                <div class="alert alert-success" role="alert">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
-
-        {% for todo in todos %}
-            <tr>
+        <tbody :name="transitionName" is="transition-group">
+            <tr v-for="todo in todos" :key="todo.id">
                 <td>
-                    <form method="post" action="{{ app.request.baseurl }}/todo/togglestatus/{{ todo.id }}">
-                        <button type="submit" class="btn btn-xs btn-default" title="{{ todo.completed ? 'Mark as Incompleted' : 'Mark as Completed' }}">
-                            <span class="glyphicon glyphicon-{{ todo.completed ? 'ok' : 'unchecked' }} glyphicon-white"></span>
-                        </button>
-                    </form>
+                    <button class="btn btn-xs btn-default" :title="todo.completed == '1' ? 'Mark as Incompleted' : 'Mark as Completed'" @click="toggleStatus(todo.id)">
+                        <span class="glyphicon glyphicon-white" :class="getCompleteButtonClass(todo)"></span>
+                    </button>
                 </td>
                 <td>
-                    <a href="{{ app.request.baseurl }}/todo/{{ todo.id }}">
-                        {% if todo.completed %}
-                            <strike>{{ todo.description }}</strike>
-                        {% else %}
-                            {{ todo.description }}
-                        {% endif %}
+                    <a :href="'/todo/' + todo.id">
+                        <template v-if="todo.completed == '1'">
+                            <strike>[[ todo.description ]]</strike>
+                        </template>
+                        <template v-else>
+                            [[ todo.description ]]
+                        </template>
                     </a>
                 </td>
                 <td>
-                    <form method="post" action="{{ app.request.baseurl }}/todo/delete/{{ todo.id }}">
-                        <button type="submit" class="btn btn-xs btn-danger"><span class="glyphicon glyphicon-remove glyphicon-white"></span></button>
-                    </form>
+                    <button class="btn btn-xs btn-danger" @click="deleteTodo(todo.id)"><span class="glyphicon glyphicon-remove glyphicon-white"></span></button>
                 </td>
             </tr>
-        {% endfor %}
-        <tr>
-            <form method="post" action="{{ app.request.baseurl }}/todo/add">
-                <td colspan="2">
-                    <input type="textbox" name="description" class="small-6 small-center" placeholder="Description...">
+        </tbody>
 
-                    {% if app.session.flashbag.has('formErrors') %}
-                        <div class="errors-container">
-                            {% for error in app.session.flashbag.get('formErrors') %}
-                                <div class="alert alert-danger" role="alert">
-                                    {{ error }}
-                                </div>
-                            {% endfor %}
+        <tr>
+            <td colspan="2">
+                <input type="textbox" name="description" class="small-6 small-center" placeholder="Description..." v-model="form.todoDescription" @keydown.enter="addTodo">
+
+                <div class="messages-container">
+                    <transition name="fade">
+                        <div class="alert alert-danger" role="alert" v-if="form.error">
+                            [[ form.error ]]
                         </div>
-                    {% endif %}
-                </td>
-                <td>
-                    <button type="submit" class="btn btn-sm btn-primary">Add</button>
-                </td>
-            </form>
-        </tr>
-        <tr>
-            <td colspan="3">
-                <div class="text-center">
-                    <nav aria-label="Page Navigation">
-                        <ul class="pagination">
-
-                            {% if (pageData.page > 1) %}
-                                <li><a class="page-link" href="?p={{ pageData.page - 1 }}">Prev</a></li>
-                            {% endif %}
-
-                            {% if (pageData.page > 4) %}
-                                <li><a class="page-link" href="?p=1">1</a></li>
-                                <li class="disabled"><a class="page-link">...</a></li>
-                            {% endif %}
-
-                            {% set continue = false %}
-                            {% for i in (pageData.page - 3)..(pageData.page + 3) %}
-
-                                {% if i <= 0 or i > pageData.total %}
-                                    {% set continue = true %}
-                                {% endif %}
-
-                                {% if not continue %}
-                                    <li class="{{ i == pageData.page ? 'active' : '' }}"><a class="page-link" href="?p={{ i }}">{{ i }}</a></li>
-                                {% endif %}
-
-                                {% if continue %}
-                                    {% set continue = false %}
-                                {% endif %}
-
-                            {% endfor %}
-
-                            {% if (pageData.page < (pageData.total - 3)) %}
-                                <li class="disabled"><a class="page-link">...</a></li>
-                                <li><a class="page-link" href="?p={{ pageData.total }}">{{ pageData.total }}</a></li>
-                            {% endif %}
-
-                            {% if (pageData.page < pageData.total) %}
-                                <li><a class="page-link" href="?p={{ pageData.page + 1 }}">Next</a></li>
-                            {% endif %}
-
-                        </ul>
-                    </nav>
+                        <div class="alert alert-success" role="alert" v-if="form.success">
+                            [[ form.success ]]
+                        </div>
+                    </transition>
                 </div>
+
+            </td>
+            <td>
+                <button type="submit" class="btn btn-sm btn-primary" @click="addTodo">Add</button>
             </td>
         </tr>
     </table>

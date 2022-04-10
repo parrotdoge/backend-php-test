@@ -125,7 +125,7 @@ $app->get('/todo/{id}', function (Request $request, $id) use ($app) {
         $page = ($page > $totalPages) ? $totalPages : $page;
 
         // Work out the offset id
-        $offsetId = $todoIds[($page - 1) * PAGE_SIZE];
+        $offsetId = $todoIds[($page - 1) * PAGE_SIZE] ?? 0;
 
         // Fetch the paged todos
         $stmt = $app['db']->prepare("
@@ -158,20 +158,39 @@ $app->get('/todo/{id}/json', function ($id) use ($app) {
         return $app->redirect('/login');
     }
 
-    $stmt = $app['db']->prepare("
-        SELECT *
-        FROM `todos`
-        WHERE `id` = ?
-        AND `user_id` = ?
-    ");
-    $stmt->execute([$id, $user['id']]);
-    $todo = $stmt->fetchAssociative();
+    if (!empty($id)) {
+        $stmt = $app['db']->prepare("
+            SELECT *
+            FROM `todos`
+            WHERE `id` = ?
+            AND `user_id` = ?
+        ");
+        $stmt->execute([$id, $user['id']]);
+        $todo = $stmt->fetchAssociative();
 
-    if (empty($todo)) {
-        $todo = [];
+        if (empty($todo)) {
+            $todo = [];
+        }
+
+        return $app->json($todo);
     }
+    else {
+        $stmt = $app['db']->prepare("
+            SELECT *
+            FROM `todos`
+            WHERE `user_id` = ?
+        ");
+        $stmt->execute([$user['id']]);
+        $todos = $stmt->fetchAll();
 
-    return $app->json($todo);
+        if (empty($todos)) {
+            $todos = [];
+        }
+
+        return $app->json([
+            'todos' => $todos
+        ]);
+    }
 })
 ->value('id', null);
 
@@ -184,10 +203,14 @@ $app->post('/todo/add', function (Request $request) use ($app) {
     $user_id = $user['id'];
     $description = $request->get('description');
 
+    $success = false;
+
     // Check if description is empty
     if (empty($description)) {
-        $app['session']->getFlashBag()->add('formErrors', 'Please enter a description for your Todo');
-        return $app->redirect('/todo');
+        return $app->json([
+            'success' => $success,
+            'error' => 'Please enter a description for your Todo'
+        ]);
     }
 
     // Security issue: Use a prepared statement to prevent any SQL injection
@@ -198,14 +221,29 @@ $app->post('/todo/add', function (Request $request) use ($app) {
     $stmt->execute([$user_id, $description]);
 
     if ($stmt->rowCount() > 0) {
-        $app['session']->getFlashBag()->add('confirmationMessages', 'Todo added');
+        $success = true;
     }
 
-    return $app->redirect('/todo');
+    $todoId = $app['db']->lastInsertId();
+
+    $stmt = $app['db']->prepare("
+        SELECT *
+        FROM `todos`
+        WHERE `id` = ?
+        AND `user_id` = ?
+    ");
+    $stmt->execute([$todoId, $user_id]);
+
+    $todo = $stmt->fetchAssociative();
+
+    return $app->json([
+        'success' => true,
+        'todo' => $todo,
+    ]);
 });
 
 
-$app->post('/todo/delete/{id}', function ($id) use ($app) {
+$app->post('/todo/delete/{id}', function (Request $request, $id) use ($app) {
     if (null === $user = $app['session']->get('user')) {
         return $app->redirect('/login');
     }
@@ -219,24 +257,44 @@ $app->post('/todo/delete/{id}', function ($id) use ($app) {
     $stmt->execute([$id, $user['id']]);
 
     if ($stmt->rowCount() > 0) {
-        $app['session']->getFlashBag()->add('confirmationMessages', 'Todo deleted');
+        $success = true;
+    }
+
+    if ($request->get('api')) {
+        return $app->json([
+            'success' => $success
+        ]);
     }
 
     return $app->redirect('/todo');
 });
 
 
-$app->post('/todo/togglestatus/{id}', function ($id) use ($app) {
+$app->post('/todo/togglestatus/{id}', function (Request $request, $id) use ($app) {
     if (null === $user = $app['session']->get('user')) {
         return $app->redirect('/login');
     }
 
-    $app['db']->prepare("
+    $success = false;
+
+    $stmt = $app['db']->prepare("
         UPDATE `todos`
         SET `completed` = 1 - `completed`
         WHERE `id` = ?
         AND `user_id` = ?
-    ")->execute([$id, $user['id']]);
+    ");
+
+    $stmt->execute([$id, $user['id']]);
+
+    if ($stmt->rowCount() > 0) {
+        $success = true;
+    }
+
+    if ($request->get('api')) {
+        return $app->json([
+            'success' => $success
+        ]);
+    }
 
     return $app->redirect('/todo');
 });
